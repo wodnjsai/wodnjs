@@ -1,3 +1,4 @@
+# 제작: 김건우, 김율언, 황지우
 import streamlit as st
 import google.generativeai as genai
 
@@ -48,7 +49,6 @@ try:
 
     if api_key:
         genai.configure(api_key=api_key)
-        # 소형이면서 오디오 처리가 가능한 gemini-2.5-flash-lite 지정
         model = genai.GenerativeModel("gemini-2.5-flash-lite")
     else:
         st.warning("🔑 Gemini API Key가 필요합니다. Secrets 설정 또는 사이드바 입력을 확인해주세요.")
@@ -63,14 +63,13 @@ audio_data = None
 mime_type = "audio/wav"
 
 with tab1:
-    # Streamlit 내장 마이크 입력 기능 (오류가 적고 가장 안정적)
     recorded_audio = st.audio_input("여기를 눌러 주변 음성을 녹음하세요")
     if recorded_audio:
         audio_data = recorded_audio.read()
         mime_type = recorded_audio.type
 
 with tab2:
-    uploaded_file = st.file_uploader("오디오 파일 선택 (mp3, wav, m4a 등)", type=["mp3", "wav", "m4a"])
+    uploaded_file = st.file_uploader("오디오 파일 선택 (mp3, wav, m4a) ", type=["mp3", "wav", "m4a"])
     if uploaded_file:
         audio_data = uploaded_file.read()
         mime_type = uploaded_file.type
@@ -85,7 +84,6 @@ if audio_data:
     if generate_btn:
         with st.spinner("🤖 AI가 음성을 분석하여 자막을 생성하는 중입니다..."):
             try:
-                # Gemini API에 오디오 데이터 바로 전달하기 위한 dict 구성
                 audio_part = {
                     "mime_type": mime_type,
                     "data": audio_data
@@ -94,4 +92,26 @@ if audio_data:
                 prompt = (
                     "너는 전문 자막 제작자야. 제공된 오디오를 듣고 받아쓰기를 해줘.\n"
                     "규칙:\n"
-                    "1. 배경음이나 소음 설명은 제외하고, 들리는 말(대사)만 정확히
+                    "1. 배경음이나 소음 설명은 제외하고, 들리는 말(대사)만 정확히 텍스트로 변환할 것.\n"
+                    "2. 가급적 자연스러운 문장 단위로 작성할 것.\n"
+                    "3. 오디오에 아무 소리도 없거나 대사가 없다면 '[음성 없음]'이라고만 출력할 것."
+                )
+                
+                response = model.generate_content([prompt, audio_part])
+                subtitle_text = response.text.strip()
+                
+                st.markdown(
+                    f'<div class="subtitle-container">🎬 {subtitle_text}</div>', 
+                    unsafe_allow_html=True
+                )
+                
+                st.subheader("📝 생성된 자막 기록")
+                st.info(subtitle_text)
+                
+            except Exception as e:
+                st.error(f"자막 생성 중 오류가 발생했습니다. 다시 시도해주세요.\n오류 내용: {e}")
+else:
+    st.markdown(
+        '<div class="subtitle-container">🎙️ 오디오를 입력하면 이곳에 자막이 표시됩니다.</div>', 
+        unsafe_allow_html=True
+    )
