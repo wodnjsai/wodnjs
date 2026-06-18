@@ -1,7 +1,6 @@
 import streamlit as st
 import google.generativeai as genai
 import random
-import time
 import numpy as np
 
 # 1. 페이지 기본 설정 및 차별화된 테마(어두운 사운드 스테이지 느낌)
@@ -11,7 +10,7 @@ st.set_page_config(
     layout="centered"
 )
 
-# 커스텀 CSS로 화면 레이아웃 및 애니메이션 연출
+# 커스텀 CSS로 화면 레이아웃 및 애니메이션 연출 (오류 수정 완료)
 st.markdown("""
 <style>
     .main { background-color: #0e1117; }
@@ -36,7 +35,7 @@ st.markdown("""
         50% { opacity: 0; }
     }
 </style>
-""", unsafe_style_with_html=True)
+""", unsafe_allow_html=True)  # <- 이 부분의 오류가 수정되었습니다.
 
 # 2. Gemini API 연결 및 예외 처리 (Streamlit Secrets 활용)
 try:
@@ -78,12 +77,11 @@ mode = st.sidebar.radio("작동 모드 선택", ["AI 방향 분석 (시뮬레이
 # 소리 방향 정의
 DIRECTIONS = ["상 (Top)", "하 (Bottom)", "좌 (Left)", "우 (Right)", "중앙 (Center)"]
 
-# 5. Gemini AI를 활용한 소리 감정 및 방향 텍스트 분석 가상 함수
+# 5. Gemini AI를 활용한 소리 감정 및 방향 텍스트 분석 함수
 def analyze_sound_with_gemini(db, user_desc):
     if not model:
         return "중앙 (Center)", "Gemini API 키가 설정되지 않아 기본 모드로 작동합니다."
     
-    # AI에게 소리 상황을 주고 방향과 분위기를 예측하도록 프롬프트 작성
     prompt = f"""
     사용자가 묘사한 소리 상황: "{user_desc}"
     현재 소리의 크기: {db} dB
@@ -99,7 +97,6 @@ def analyze_sound_with_gemini(db, user_desc):
         response = model.generate_content(prompt)
         text = response.text
         
-        # 간단한 파싱
         detected_dir = "중앙 (Center)"
         for d in DIRECTIONS:
             if d in text:
@@ -143,20 +140,10 @@ else:
     st.success(f"🎵 안정적인 소리 수준 ({db_level} dB) - 테마 이모티콘 작동 중")
 
 # 5x5 그리드 레이아웃을 이용해 상, 하, 좌, 우, 중앙 스크린 위치 시각화
-grid_slots = {
-    "상 (Top)": (1, 2),
-    "좌 (Left)": (2, 0),
-    "중앙 (Center)": (2, 2),
-    "우 (Right)": (2, 4),
-    "하 (Bottom)": (3, 2)
-}
-
-# 5행 5열의 가상 공간 생성
 container = st.container()
 with container:
-    st.markdown('<div class="sound-stage">', unsafe_style_with_html=True)
+    st.markdown('<div class="sound-stage">', unsafe_allow_html=True)
     
-    # 레이아웃 배치를 위한 공백 및 컴포넌트 구조화
     row1 = st.columns([1, 1, 2, 1, 1])
     row2 = st.columns([1, 1, 2, 1, 1])
     row3 = st.columns([1, 1, 2, 1, 1])
@@ -164,40 +151,40 @@ with container:
     # 1행 (상)
     with row1[2]:
         if detected_direction == "상 (Top)":
-            st.markdown(f'<div class="direction-display {"decibel-high" if db_level>=80 else ""}">{display_emoji}</div>', unsafe_style_with_html=True)
+            st.markdown(f'<div class="direction-display {"decibel-high" if db_level>=80 else ""}">{display_emoji}</div>', unsafe_allow_html=True)
             st.caption("▲ UPPER")
         else: st.write("")
             
     # 2행 (좌, 중앙, 우)
     with row2[0]:
         if detected_direction == "좌 (Left)":
-            st.markdown(f'<div class="direction-display {"decibel-high" if db_level>=80 else ""}">{display_emoji}</div>', unsafe_style_with_html=True)
+            st.markdown(f'<div class="direction-display {"decibel-high" if db_level>=80 else ""}">{display_emoji}</div>', unsafe_allow_html=True)
             st.caption("◀ LEFT")
         else: st.write("")
         
     with row2[2]:
         if detected_direction == "중앙 (Center)":
-            st.markdown(f'<div class="direction-display {"decibel-high" if db_level>=80 else ""}">{display_emoji}</div>', unsafe_style_with_html=True)
+            st.markdown(f'<div class="direction-display {"decibel-high" if db_level>=80 else ""}">{display_emoji}</div>', unsafe_allow_html=True)
             st.caption("● CENTER")
         else:
-            st.markdown("<h3 style='color:#4e5d6c; margin-top:20px;'>STAGE</h3>", unsafe_style_with_html=True)
+            st.markdown("<h3 style='color:#4e5d6c; margin-top:20px;'>STAGE</h3>", unsafe_allow_html=True)
             
     with row2[4]:
         if detected_direction == "우 (Right)":
-            st.markdown(f'<div class="direction-display {"decibel-high" if db_level>=80 else ""}">{display_emoji}</div>', unsafe_style_with_html=True)
+            st.markdown(f'<div class="direction-display {"decibel-high" if db_level>=80 else ""}">{display_emoji}</div>', unsafe_allow_html=True)
             st.caption("RIGHT ▶")
         else: st.write("")
             
     # 3행 (하)
     with row3[2]:
         if detected_direction == "하 (Bottom)":
-            st.markdown(f'<div class="direction-display {"decibel-high" if db_level>=80 else ""}">{display_emoji}</div>', unsafe_style_with_html=True)
+            st.markdown(f'<div class="direction-display {"decibel-high" if db_level>=80 else ""}">{display_emoji}</div>', unsafe_allow_html=True)
             st.caption("▼ LOWER")
         else: st.write("")
 
-    st.markdown('</div>', unsafe_style_with_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
 
-# 부가 기능: 시각적인 사운드 이퀄라이저 바 바인딩 (차별화 포인트)
+# 부가 기능: 시각적인 사운드 이퀄라이저 바 바인딩
 st.markdown("#### 오디오 주파수 시각화 (가상)")
 chart_data = np.random.randn(20) * (db_level / 100.0)
 st.bar_chart(chart_data)
