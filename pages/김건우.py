@@ -14,19 +14,20 @@ st.markdown("""
     <style>
     .subtitle-container {
         position: fixed;
-        bottom: 40px;
+        bottom: 50px;
         left: 5%;
         right: 5%;
-        background-color: rgba(0, 0, 0, 0.75);
+        background-color: rgba(0, 0, 0, 0.85);
         color: #ffffff;
         text-align: center;
-        padding: 15px 25px;
-        border-radius: 10px;
-        font-size: 20px;
-        font-weight: 500;
+        padding: 18px 25px;
+        border-radius: 12px;
+        font-size: 22px;
+        font-weight: bold;
         z-index: 9999;
-        box-shadow: 0px 4px 15px rgba(0,0,0,0.3);
-        line-height: 1.5;
+        box-shadow: 0px 5px 20px rgba(0,0,0,0.5);
+        line-height: 1.6;
+        border: 1px solid rgba(255,255,255,0.1);
     }
     .main-title {
         text-align: center;
@@ -39,22 +40,24 @@ st.markdown("<h1 class='main-title'>🎬 AI 실시간 자동 자막 생성기</h
 st.write("외부에서 들리는 음성을 녹음하거나 오디오 파일을 업로드하세요. Gemini AI가 하단에 자막을 생성합니다.")
 st.markdown("---")
 
-# API 키 및 클라이언트 초기화 (예외 처리)
-try:
-    if "GEMINI_API_KEY" in st.secrets:
-        api_key = st.secrets["GEMINI_API_KEY"]
-    else:
-        st.info("💡 배포 전 로컬 테스트 중이시라면 사이드바에 API 키를 입력하세요.")
-        api_key = st.sidebar.text_input("Gemini API Key", type="password")
+# API 키 및 클라이언트 초기화
+api_key = None
+if "GEMINI_API_KEY" in st.secrets:
+    api_key = st.secrets["GEMINI_API_KEY"]
+else:
+    st.sidebar.warning("⚠️ Secrets에 GEMINI_API_KEY가 설정되지 않았습니다.")
+    api_key = st.sidebar.text_input("아래에 Gemini API Key를 입력하세요:", type="password")
 
-    if api_key:
+if api_key:
+    try:
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-2.5-flash-lite")
-    else:
-        st.warning("🔑 Gemini API Key가 필요합니다. Secrets 설정 또는 사이드바 입력을 확인해주세요.")
+        # 안정적인 처리를 위해 기본 flash 모델 사용
+        model = genai.GenerativeModel("gemini-2.5-flash")
+    except Exception as e:
+        st.error(f"API 인증 설정 중 오류 발생: {e}")
         st.stop()
-except Exception as e:
-    st.error(f"초기화 중 오류 발생: {e}")
+else:
+    st.info("🔑 왼쪽 사이드바에 구글 Gemini API Key를 입력하시면 서비스가 활성화됩니다.")
     st.stop()
 
 # 오디오 입력 방식 선택
@@ -63,55 +66,69 @@ audio_data = None
 mime_type = "audio/wav"
 
 with tab1:
-    recorded_audio = st.audio_input("여기를 눌러 주변 음성을 녹음하세요")
+    recorded_audio = st.audio_input("버튼을 눌러 주변 음성을 녹음하세요 (말을 마친 후 다시 눌러 녹음 완료)")
     if recorded_audio:
         audio_data = recorded_audio.read()
         mime_type = recorded_audio.type
 
 with tab2:
-    uploaded_file = st.file_uploader("오디오 파일 선택 (mp3, wav, m4a) ", type=["mp3", "wav", "m4a"])
+    uploaded_file = st.file_uploader("오디오 파일 선택 (mp3, wav, m4a)", type=["mp3", "wav", "m4a"])
     if uploaded_file:
         audio_data = uploaded_file.read()
         mime_type = uploaded_file.type
 
 # 음성 분석 및 자막 생성 프로세스
 if audio_data:
-    st.success("🎯 음성 데이터가 성공적으로 수신되었습니다!")
+    st.success("🎯 음성이 성공적으로 기록되었습니다. 아래 버튼을 눌러 자막을 생성하세요!")
     st.audio(audio_data, format=mime_type)
     
     generate_btn = st.button("✨ 자막 생성하기", type="primary", use_container_width=True)
     
     if generate_btn:
-        with st.spinner("🤖 AI가 음성을 분석하여 자막을 생성하는 중입니다..."):
+        with st.spinner("🤖 AI가 음성을 듣고 자막을 제작 중입니다..."):
             try:
+                # 오디오 포맷 강제 매핑 안정화
+                current_mime = mime_type
+                if "wav" in current_mime:
+                    current_mime = "audio/wav"
+                elif "mp3" in current_mime:
+                    current_mime = "audio/mp3"
+                elif "m4a" in current_mime:
+                    current_mime = "audio/m4a"
+
                 audio_part = {
-                    "mime_type": mime_type,
+                    "mime_type": current_mime,
                     "data": audio_data
                 }
                 
                 prompt = (
-                    "너는 전문 자막 제작자야. 제공된 오디오를 듣고 받아쓰기를 해줘.\n"
-                    "규칙:\n"
-                    "1. 배경음이나 소음 설명은 제외하고, 들리는 말(대사)만 정확히 텍스트로 변환할 것.\n"
-                    "2. 가급적 자연스러운 문장 단위로 작성할 것.\n"
-                    "3. 오디오에 아무 소리도 없거나 대사가 없다면 '[음성 없음]'이라고만 출력할 것."
+                    "너는 오디오 받아쓰기 전문가야. 오디오를 듣고 들리는 인간의 대사만 정확하게 한국어로 텍스트로 변환해줘.\n"
+                    "배경 소음, 음악 소리 등은 무시하고 말소리만 번역해줘."
                 )
                 
                 response = model.generate_content([prompt, audio_part])
                 subtitle_text = response.text.strip()
                 
-                st.markdown(
-                    f'<div class="subtitle-container">🎬 {subtitle_text}</div>', 
-                    unsafe_allow_html=True
-                )
+                if not subtitle_text:
+                    subtitle_text = "[음성이 인식되지 않았습니다. 더 크게 말씀해 보세요.]"
                 
-                st.subheader("📝 생성된 자막 기록")
-                st.info(subtitle_text)
+                # 세션 상태에 자막 저장하여 화면 유지
+                st.session_state["subtitle"] = subtitle_text
                 
             except Exception as e:
-                st.error(f"자막 생성 중 오류가 발생했습니다. 다시 시도해주세요.\n오류 내용: {e}")
+                st.error(f"🚨 자막 생성 실패! 오류 원인: {e}")
+                st.info("팁: API 키가 올바른지, 혹은 오디오 파일이 너무 짧거나 길지 않은지 확인하세요.")
+
+# 자막 출력부 (화면 하단 고정)
+if "subtitle" in st.session_state:
+    st.markdown(
+        f'<div class="subtitle-container">🎬 {st.session_state["subtitle"]}</div>', 
+        unsafe_allow_html=True
+    )
+    st.subheader("📝 자막 텍스트 결과")
+    st.code(st.session_state["subtitle"], language="text")
 else:
     st.markdown(
-        '<div class="subtitle-container">🎙️ 오디오를 입력하면 이곳에 자막이 표시됩니다.</div>', 
+        '<div class="subtitle-container">🎙️ 음성을 입력하고 [자막 생성하기]를 누르면 이곳에 표시됩니다.</div>', 
         unsafe_allow_html=True
     )
