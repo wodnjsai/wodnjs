@@ -4,7 +4,7 @@ import google.generativeai as genai
 # 1. 페이지 기본 설정 및 스타일(CSS) 적용
 st.set_page_config(page_title="AI 음성 자동 자막 생성기", page_icon="🎙️", layout="wide")
 
-# 화면 하단 고정 자막을 위한 CSS 고정 스타일링
+# 화면 하단 고정 자막을 위한 CSS 고정 스타일링 (오류 수정 완료)
 st.markdown("""
     <style>
     .subtitle-container {
@@ -12,22 +12,22 @@ st.markdown("""
         left: 0;
         bottom: 0;
         width: 100%;
-        background-color: rgba(0, 0, 0, 0.75);
+        background-color: rgba(0, 0, 0, 0.85);
         color: #ffffff;
         text-align: center;
-        padding: 20px;
-        font-size: 24px;
+        padding: 25px;
+        font-size: 26px;
         font-weight: bold;
         z-index: 9999;
-        border-top: 3px solid #FF4B4B;
+        border-top: 4px solid #FF4B4B;
         font-family: 'Malgun Gothic', sans-serif;
     }
     /* 하단 여백을 주어 자막이 다른 콘텐트를 가리지 않도록 조절 */
     .main-content {
-        margin-bottom: 150px;
+        margin-bottom: 180px;
     }
     </style>
-""", unsafe_index=True)
+""", unsafe_allow_html=True) # 👈 이 부분의 오타를 수정했습니다!
 
 st.markdown('<div class="main-content">', unsafe_allow_html=True)
 
@@ -41,7 +41,7 @@ if "GEMINI_API_KEY" in st.secrets:
     api_key = st.secrets["GEMINI_API_KEY"]
     genai.configure(api_key=api_key)
 else:
-    st.error("⚠️ Secrets에 GEMINI_API_KEY가 설정되지 않았습니다. 관자용 설정이 필요합니다.")
+    st.error("⚠️ Secrets에 GEMINI_API_KEY가 설정되지 않았습니다. Streamlit Cloud 설정에서 추가해주세요.")
     st.stop()
 
 # 4. 레이아웃 분할 (좌측: 입력 및 제어 / 우측: 전체 스크립트 출력)
@@ -60,7 +60,7 @@ with col1:
             st.audio(audio_bytes, format="audio/mp3")
             
     else:
-        # Streamlit 1.33+ 내장 오디오 인풋 활용 (가장 안정적)
+        # Streamlit 내장 오디오 인풋 활용
         recorded_file = st.audio_input("마이크 버튼을 눌러 소리를 녹음하세요")
         if recorded_file is not None:
             audio_bytes = recorded_file.read()
@@ -80,7 +80,7 @@ if audio_bytes:
                 
                 # 오디오 데이터를 Gemini API 포맷으로 전달
                 audio_data = {
-                    "mime_type": "audio/mp3", # 범용 포맷 지정
+                    "mime_type": "audio/mp3",
                     "data": audio_bytes
                 }
                 
@@ -93,28 +93,4 @@ if audio_bytes:
                 response = model.generate_content([prompt, audio_data])
                 subtitles_text = response.text.strip()
                 
-                # 성공 메시지
-                with col2:
-                    st.success("✅ 자막 변환 완료!")
-                    
-            except Exception as e:
-                st.error(f"❌ API 호출 중 오류가 발생했습니다: {e}")
-else:
-    with col1:
-        st.info("💡 음성 파일을 업로드하거나 마이크로 녹음하면 자막 생성이 시작됩니다.")
-
-# 6. 결과 출력 및 하단 자막 배치
-with col2:
-    st.subheader("📝 전체 스크립트 보기")
-    if subtitles_text:
-        st.text_area("변환된 전체 텍스트", value=subtitles_text, height=200)
-    else:
-        st.write("변환된 자막이 여기에 표시됩니다.")
-
-# 화면 맨 아래 고정되는 자막 레이어 생성
-if subtitles_text:
-    st.markdown(f'<div class="subtitle-container">🇰🇷 {subtitles_text}</div>', unsafe_allow_html=True)
-else:
-    st.markdown('<div class="subtitle-container">🎙️ 소리가 감지되면 여기에 실시간 자막이 표시됩니다.</div>', unsafe_allow_html=True)
-
-st.markdown('</div>', unsafe_allow_html=True)
+                with col2
